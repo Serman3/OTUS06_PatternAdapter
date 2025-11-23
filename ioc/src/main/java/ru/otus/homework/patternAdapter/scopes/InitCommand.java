@@ -69,6 +69,16 @@ public class InitCommand implements Command {
                     (Object[] args) -> new RegisterDependencyCommand((String) args[0], (Function<Object[], Object>) args[1])
             );
 
+            ROOT_SCOPE.put(
+                    "Ioc.Bean.Register",
+                    (Object[] args) -> new BeanRegisterDependencyCommand()
+            );
+
+            ROOT_SCOPE.put(
+                    "Ioc.Adapter.Register",
+                    (Object[] args) -> new AdapterRegisterCommand()
+            );
+
             Function<BiFunction<String, Object[], Object>, BiFunction<String, Object[], Object>> oldStrategy =
                     (BiFunction<String, Object[], Object> currentStrategy) -> (String dependency, Object[] args) -> {
                         var scope = CURRENT_SCOPES.get() != null ? CURRENT_SCOPES.get() : ROOT_SCOPE;
@@ -79,6 +89,16 @@ public class InitCommand implements Command {
             ((Command) Ioc.resolve(
                     "Update Ioc Resolve Dependency Strategy",
                     new Object[]{oldStrategy}
+            )).execute();
+
+            ((Command) Ioc.resolve(
+                    "Ioc.Bean.Register",
+                    new Object[]{}
+            )).execute();
+
+            ((Command) Ioc.resolve(
+                    "Ioc.Adapter.Register",
+                    new Object[]{}
             )).execute();
 
             ALREADY_EXECUTES_SUCCESSFULLY.set(true);

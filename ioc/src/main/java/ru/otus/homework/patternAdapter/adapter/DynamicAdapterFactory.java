@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import ru.otus.homework.patternAdapter.generator.MetaData;
 import ru.otus.homework.patternAdapter.generator.MetaDataCollector;
-import ru.otus.homework.patternAdapter.generator.MethodBodyBuilder;
+import ru.otus.homework.patternAdapter.generator.MethodBuilder;
 import ru.otus.homework.patternAdapter.util.ApplicationProperties;
 
 import javax.tools.*;
@@ -33,13 +33,13 @@ public class DynamicAdapterFactory<T> {
 
     private DynamicAdapterFactory() {}
 
-    public static <T> AdapterFactory<T> createAdapterFactory(Class<T> interfaceType) {
+    public static <T> AdapterFactory<T> createAdapterFactory(Class<T> interfaceType, MethodBuilder methodBuilder) {
         if (interfaceType.isInterface()) {
             // Очищаем директории перед генерацией/компиляцией
-            deleteGeneratedDirectories();
+            // deleteGeneratedDirectories();
 
             // 1. Генерируем .java исходники
-            String adapterFactorySimpleName = generateAdapterClasses(interfaceType);
+            String adapterFactorySimpleName = generateAdapterClasses(interfaceType, methodBuilder);
             String fullAdapterFactoryNameClass = GENERATED_CLASSES_PACKAGE + "." + adapterFactorySimpleName;
 
             // 2. Компилируем сгенерированные .java файлы в .class файлы
@@ -68,7 +68,7 @@ public class DynamicAdapterFactory<T> {
     }
 
     @SneakyThrows
-    private static <T> String generateAdapterClasses(Class<T> interfaceType) {
+    private static <T> String generateAdapterClasses(Class<T> interfaceType, MethodBuilder methodBuilder) {
         Files.createDirectories(Paths.get(GENERATED_SOURCES_DIR));
 
         List<MetaData> metaDataList = MetaDataCollector.collectMetaData(interfaceType);
@@ -85,8 +85,8 @@ public class DynamicAdapterFactory<T> {
         adapterClass.field(JMod.PRIVATE, Object.class, fieldName);
         JMethod constructorMethod = adapterClass.constructor(JMod.PUBLIC);
         constructorMethod.param(Object.class, fieldName);
-        JBlock block = constructorMethod.body();
-        block.assign(JExpr._this().ref(fieldName), JExpr.ref(fieldName));
+        JBlock constructorBlock = constructorMethod.body();
+        constructorBlock.assign(JExpr._this().ref(fieldName), JExpr.ref(fieldName));
 
         for (MetaData metaData : metaDataList) {
             JMethod method = adapterClass.method(JMod.PUBLIC, metaData.getReturnType(), metaData.getMethodName());
@@ -95,7 +95,11 @@ public class DynamicAdapterFactory<T> {
                 method.param(jclass, entry.getKey());
             }
             method.annotate(Override.class);
-            method.body().directStatement(new MethodBodyBuilder(metaData.getMethodName(), interfaceSimpleName, metaData.getReturnType().getName()).getBody());
+            String methodBody = methodBuilder.getBody(metaData.getMethodName(), interfaceSimpleName, metaData.getReturnType().getName());
+            method.body().directStatement(methodBody);
+            if (methodBody.contains("Ioc.resolve") && !methodBody.contains("IoC.Register")) {
+                constructorBlock.directStatement(methodBuilder.getConstructorBody(metaData.getMethodName(), interfaceSimpleName));
+            }
         }
 
         // === AdapterFactory Class Generation ===

@@ -20,11 +20,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.sun.codemodel</groupId>
-            <artifactId>codemodel</artifactId>
-            <version>2.6</version>
-        </dependency>
-        <dependency>
             <groupId>ru.otus.homework.patternAdapter</groupId>
             <artifactId>ioc</artifactId>
             <version>1.0-SNAPSHOT</version>
